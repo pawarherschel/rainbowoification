@@ -1,14 +1,12 @@
 extern crate core;
 
-// use rayon::prelude::*;
-use std::time::Instant;
+use std::fs;
 
 #[allow(clippy::wildcard_imports)]
 use image::*;
-use indicatif::ProgressIterator as _;
-// #[allow(clippy::wildcard_imports)]
-// use indicatif::*;
-use oklab::{oklab_to_srgb, srgb_to_oklab, Oklab, RGB};
+use indicatif::{ParallelProgressIterator, ProgressIterator as _};
+use oklab::{Oklab, oklab_to_srgb, RGB, srgb_to_oklab};
+use rayon::prelude::*;
 
 use crate::utils::get_pb;
 
@@ -58,6 +56,8 @@ fn main() {
 
     dbg!(&reference_values);
 
+    let frames = 840u32;
+
     let img = time_it! { "loading the image" =>
         image::io::Reader::open("bg.png").unwrap().decode().unwrap()
     };
@@ -68,19 +68,40 @@ fn main() {
     };
     println!("img pixels len {len}");
 
-    let pixel_manipulation = |ConstL { l, a, b }| {
-        let a = 1.0 - a;
-        let b = 1.0 - b;
+    let pixel_manipulation_raw = |ConstL { l, a, b }, perc: f32| {
+        // let perc = perc * 100.0;
+        // let a_mul = ((perc as u32 / 10) as f32) / 100.0;
+        // let b_mul = ((perc as u32 % 10) as f32) / 100.0;
+
+        let a_fac = perc * 100.0;
+        let b_fac = perc;
+
+        let a = (a + a_fac) % 1.0;
+        let b = (b + b_fac) % 1.0;
 
         ConstL { l, a, b }
     };
 
-    let out = manipulate(&reference_values, &img, pixel_manipulation);
-    let out = manipulate(&reference_values, &out, pixel_manipulation);
+    let _ = fs::create_dir("out");
 
-    time_it! { "saving buffer" =>
-        out.save("out.png").unwrap()
-    }
+    (0..frames)
+        .into_par_iter()
+        .progress_with(get_pb(u64::from(frames), "processing..."))
+        .for_each(|frame_no| {
+            #[allow(clippy::cast_possible_truncation)]
+                let perc = remap! {
+                value: f64::from(frame_no + 1),
+                from: 0f64, f64::from(frames),
+                to: 0.0, 1.0
+            } as f32;
+
+            // println!("{frame_no}: {{ perc: {perc} }}");
+
+            let pixel_manipulation = move |it| pixel_manipulation_raw(it, perc);
+            let out = manipulate(&reference_values, &img, pixel_manipulation);
+
+            out.save(format!("out/frame_{frame_no:03}.png")).unwrap();
+        });
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -93,19 +114,16 @@ struct ConstL {
 fn manipulate(
     reference_values: &MinMaxAB,
     img: &DynamicImage,
-    pixel_manipulation: fn(ConstL) -> ConstL,
+    pixel_manipulation: impl Fn(ConstL) -> ConstL,
 ) -> DynamicImage {
-    let process_start = Instant::now();
+    // let process_start = Instant::now();
 
     let dims = img.dimensions();
-    let img_pixels_len = (dims.0 * dims.1).into();
+    // let img_pixels_len = (dims.0 * dims.1).into();
 
     // setup
-    let out_pixels = img
-        .as_rgb8()
-        .unwrap()
-        .pixels()
-        .progress_with(get_pb(img_pixels_len, "processing"));
+    let out_pixels = img.as_rgb8().unwrap().pixels();
+    // .progress_with(get_pb(img_pixels_len, "processing"));
 
     // pre manip
     let out_pixels = out_pixels
@@ -137,7 +155,7 @@ fn manipulate(
     // collecting results
     let out_pixels = out_pixels.collect();
 
-    println!("process took {:?}", process_start.elapsed());
+    // println!("process took {:?}", process_start.elapsed());
 
     let out = RgbImage::from_vec(dims.0, dims.1, out_pixels).unwrap();
     out.into()
