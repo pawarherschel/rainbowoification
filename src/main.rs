@@ -32,7 +32,7 @@ fn main() {
         )
         .progress_with(get_pb(256*256*256, "finding out max and min values"))
         .map(|it| (it, Oklab::from(it)))
-        .fold(MinMaxAB::default(), |acc, (rgb, oklab)| {
+        .fold(MinMaxAB::default(), |acc, (_rgb, oklab)| {
             let MinMaxAB {min_a,max_a,min_b,max_b} = acc;
             let Oklab { a,b, .. } = oklab;
 
@@ -45,14 +45,14 @@ fn main() {
         })
     };
 
-    dbg!(reference_values);
+    dbg!(&reference_values);
 
     let img = time_it! { "loading the image" =>
         image::io::Reader::open("bg.png").unwrap().decode().unwrap()
     };
     println!("dims: {:?}", img.dimensions());
 
-    let len = time_it! { "pixels count" =>
+    let len = time_it! {at once | "pixels count" =>
         img.pixels().count()
     };
     println!("img pixels len {len}");
@@ -64,8 +64,8 @@ fn main() {
         ConstL { l, a, b }
     };
 
-    let out = manipulate(reference_values, &img, pixel_manipulation);
-    let out = manipulate(reference_values, &out, pixel_manipulation);
+    let out = manipulate(&reference_values, &img, pixel_manipulation);
+    let out = manipulate(&reference_values, &out, pixel_manipulation);
 
     time_it! { "saving buffer" =>
         out.save("out.png").unwrap()
@@ -80,7 +80,7 @@ struct ConstL {
 }
 
 fn manipulate(
-    reference_values: MinMaxAB,
+    reference_values: &MinMaxAB,
     img: &DynamicImage,
     pixel_manipulation: fn(ConstL) -> ConstL,
 ) -> DynamicImage {
