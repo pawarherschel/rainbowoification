@@ -25,9 +25,9 @@ struct MinMaxAB {
 
 fn main() {
     let reference_values = time_it! {at once | "finding out max and min values" =>
-        (0..255u8).flat_map(|r|
-            (0..255u8).flat_map(move |g|
-                (0..255u8).map(move |b| RGB::from([r,g,b]))
+        (0..=255u8).flat_map(|r|
+            (0..=255u8).flat_map(move |g|
+                (0..=255u8).map(move |b| RGB::from([r,g,b]))
             )
         )
         .progress_with(get_pb(256*256*256, "finding out max and min values"))
