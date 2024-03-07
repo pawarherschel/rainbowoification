@@ -23,26 +23,37 @@ struct MinMaxAB {
     pub max_b: f32,
 }
 
-fn main() {
-    let reference_values = time_it! {at once | "finding out max and min values" =>
-        (0..=255u8).flat_map(|r|
-            (0..=255u8).flat_map(move |g|
-                (0..=255u8).map(move |b| RGB::from([r,g,b]))
-            )
-        )
-        .progress_with(get_pb(256*256*256, "finding out max and min values"))
+fn get_ref_vals() -> MinMaxAB {
+    (0..=255u8)
+        .flat_map(|r| (0..=255u8).flat_map(move |g| (0..=255u8).map(move |b| RGB::from([r, g, b]))))
+        .progress_with(get_pb(256 * 256 * 256, "finding out max and min values"))
         .map(|it| (it, Oklab::from(it)))
         .fold(MinMaxAB::default(), |acc, (_rgb, oklab)| {
-            let MinMaxAB {min_a,max_a,min_b,max_b} = acc;
-            let Oklab { a,b, .. } = oklab;
+            let MinMaxAB {
+                min_a,
+                max_a,
+                min_b,
+                max_b,
+            } = acc;
+            let Oklab { a, b, .. } = oklab;
 
             let min_a = min_a.min(a);
             let max_a = max_a.max(a);
             let min_b = min_b.min(b);
             let max_b = max_b.max(b);
 
-            MinMaxAB {min_a, max_a, min_b, max_b}
+            MinMaxAB {
+                min_a,
+                max_a,
+                min_b,
+                max_b,
+            }
         })
+}
+
+fn main() {
+    let reference_values = time_it! {at once | "finding out max and min values" =>
+        get_ref_vals()
     };
 
     dbg!(&reference_values);
@@ -84,7 +95,6 @@ fn manipulate(
     img: &DynamicImage,
     pixel_manipulation: fn(ConstL) -> ConstL,
 ) -> DynamicImage {
-    println!("processing single image to invert the a and b from OKLAB's l, a, and b");
     let process_start = Instant::now();
 
     let dims = img.dimensions();
