@@ -5,7 +5,7 @@ use std::fs;
 #[allow(clippy::wildcard_imports)]
 use image::*;
 use indicatif::{ParallelProgressIterator, ProgressIterator as _};
-use oklab::{Oklab, oklab_to_srgb, RGB, srgb_to_oklab};
+use oklab::{oklab_to_srgb, srgb_to_oklab, Oklab, RGB};
 use rayon::prelude::*;
 
 use crate::utils::get_pb;
@@ -73,7 +73,7 @@ fn main() {
         // let a_mul = ((perc as u32 / 10) as f32) / 100.0;
         // let b_mul = ((perc as u32 % 10) as f32) / 100.0;
 
-        let a_fac = perc * 100.0;
+        let a_fac = perc * 3.0;
         let b_fac = perc;
 
         let a = (a + a_fac) % 1.0;
@@ -89,7 +89,7 @@ fn main() {
         .progress_with(get_pb(u64::from(frames), "processing..."))
         .for_each(|frame_no| {
             #[allow(clippy::cast_possible_truncation)]
-                let perc = remap! {
+            let perc = remap! {
                 value: f64::from(frame_no + 1),
                 from: 0f64, f64::from(frames),
                 to: 0.0, 1.0
