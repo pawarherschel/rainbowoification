@@ -10,3 +10,4 @@ image = { version = "0.24.8", features = ["rgb", "rayon"] }
 indicatif = { version = "0.17.8", features = ["rayon", "improved_unicode"] }
 oklab = "1.0.1"
 rayon = "1.8.1"
+num-traits = "0.2.18"

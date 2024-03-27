@@ -68,7 +68,7 @@ fn main() {
     };
     println!("img pixels len {len}");
 
-    let pixel_manipulation_raw = |ConstL { l, a, b }, perc: f32| {
+    let pixel_manipulation_raw = |ConstL { l, a, b }, perc: f32, _seed: usize| {
         // let perc = perc * 100.0;
         // let a_mul = ((perc as u32 / 10) as f32) / 100.0;
         // let b_mul = ((perc as u32 % 10) as f32) / 100.0;
@@ -97,7 +97,7 @@ fn main() {
 
             // println!("{frame_no}: {{ perc: {perc} }}");
 
-            let pixel_manipulation = move |it| pixel_manipulation_raw(it, perc);
+            let pixel_manipulation = move |(seed, it)| pixel_manipulation_raw(it, perc, seed);
             let out = manipulate(&reference_values, &img, pixel_manipulation);
 
             out.save(format!("out/frame_{frame_no:03}.png")).unwrap();
@@ -114,7 +114,7 @@ struct ConstL {
 fn manipulate(
     reference_values: &MinMaxAB,
     img: &DynamicImage,
-    pixel_manipulation: impl Fn(ConstL) -> ConstL,
+    pixel_manipulation: impl Fn((usize, ConstL)) -> ConstL,
 ) -> DynamicImage {
     // let process_start = Instant::now();
 
@@ -135,7 +135,7 @@ fn manipulate(
             let b = remap!(value: b, from: reference_values.min_b, reference_values.max_b, to: 0.0, 1.0);
 
             ConstL { l, a, b }
-        });
+        }).enumerate();
 
     // manip
     let out_pixels = out_pixels.map(pixel_manipulation);
